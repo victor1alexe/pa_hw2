@@ -1,6 +1,9 @@
+./ferate.cpp:128:  Could not find a newline character at the end of the file.  [whitespace/ending_newline] [5]
 ./supercomputer.cpp:85:  If/else bodies with multiple statements require braces  [readability/braces] [4]
 ./supercomputer.cpp:97:  If/else bodies with multiple statements require braces  [readability/braces] [4]
 ./supercomputer.cpp:176:  Could not find a newline character at the end of the file.  [whitespace/ending_newline] [5]
 Done processing ./_utils/verif.cpp
+Done processing ./ferate.cpp
+Done processing ./magazin.cpp
 Done processing ./supercomputer.cpp
-Total errors found: 3
+Total errors found: 4
