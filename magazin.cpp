@@ -1,84 +1,98 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
 #include <unistd.h>
 
 #include <iostream>
 #include <list>
 #include <stack>
 
-using std::cout;
-using std::endl;
+using std::ifstream;
 using std::list;
+using std::ofstream;
+using std::stack;
 
-int dfsLimit(list<int> *tree, int treeSize, int root, int x, int *dp)
+void count_descendants(list<int> *tree, int current_node, int *descendants_of)
 {
-  std::stack<int> stack;
-  int counter = 0;
+	descendants_of[current_node] = 0;
 
-  stack.push(root);
-  int node;
+	for (auto it = tree[current_node].begin(); it != tree[current_node].end(); it++)
+	{
+		count_descendants(tree, *it, descendants_of);
 
-  while (!stack.empty() && counter <= x)
-  {
-    node = stack.top();
-    stack.pop();
-    counter++;
-
-    // push children
-    int nodeChildren = dp[node];
-    if (counter + nodeChildren < x)
-    {
-      counter += nodeChildren;
-      continue;
-    }
-    for (auto it = tree[node].rbegin(); it != tree[node].rend(); it++)
-    {
-      stack.push(*it);
-    }
-  }
-
-  if (counter <= x)
-    return -1;
-  else
-    return node;
-}
-
-void count_descendants(list<int> *tree, int treeSize, int root, int *dp)
-{
-  dp[root] = 0;
-  for (auto it = tree[root].begin(); it != tree[root].end(); it++)
-  {
-    count_descendants(tree, treeSize, *it, dp);
-    dp[root] += dp[*it] + 1;
-  }
+		descendants_of[current_node] += descendants_of[*it] + 1;
+	}
 }
 
 int main()
 {
-  // read from file
-  FILE *f = fopen("magazin.in", "r");
-  FILE *out = fopen("magazin.out", "w");
-  int n, q;
-  fscanf(f, "%d %d", &n, &q);
-  int *in = (int *)malloc((n + 1) * sizeof(int));
-  list<int> *tree = new list<int>[n + 1];
-  for (int i = 2; i <= n; i++)
-  {
-    fscanf(f, "%d", &in[i]);
-    tree[in[i]].push_back(i);
-  }
+	ifstream fin("magazin.in");
+	ofstream fout("magazin.out");
 
-  int *dp = (int *)malloc((n + 1) * sizeof(int));
-  count_descendants(tree, n + 1, 1, dp);
+	int nr_deposits = 0;
+	int nr_questions = 0;
 
-  for (int i = 0; i < q; i++)
-  {
-    int x, root;
-    fscanf(f, "%d %d", &root, &x);
-    fprintf(out, "%d\n", dfsLimit(tree, n + 1, root, x, dp));
-  }
-  fclose(f);
-  fclose(out);
-  return 0;
+	fin >> nr_deposits >> nr_questions;
+
+	int supplier_of[nr_deposits + 1] = {0};
+	int descendants_of[nr_deposits + 1] = {0};
+
+	auto *tree = new list<int>[nr_deposits + 1];
+
+	for (int i = 2; i <= nr_deposits; i++)
+	{
+		fin >> supplier_of[i];
+
+		tree[supplier_of[i]].push_back(i);
+	}
+
+	count_descendants(tree, 1, descendants_of);
+
+	for (int i = 1; i <= nr_questions; i++)
+	{
+		int deposit;
+		int nr_of_deliveries;
+
+		fin >> deposit >> nr_of_deliveries;
+
+		stack<int> stack;
+		int node;
+		int counter = 0;
+
+		stack.push(deposit);
+
+		while (!stack.empty() && counter <= nr_of_deliveries)
+		{
+			node = stack.top();
+			stack.pop();
+
+			counter++;
+
+			if (counter + descendants_of[node] < nr_of_deliveries)
+			{
+				counter += descendants_of[node];
+				continue;
+			}
+
+			for (auto node_neigh = tree[node].rbegin(); node_neigh != tree[node].rend(); node_neigh++)
+			{
+				stack.push(*node_neigh);
+			}
+		}
+
+		if (counter <= nr_of_deliveries)
+		{
+			fout << -1 << '\n';
+		}
+		else
+		{
+			fout << node << '\n';
+		}
+	}
+
+	fin.close();
+	fout.close();
+
+	return 0;
 }
