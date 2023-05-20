@@ -11,25 +11,29 @@ using std::cout;
 using std::endl;
 using std::list;
 
-int dfsLimit(list<int> *tree, int treeSize, int root, int x, int *dp) {
+int dfsLimit(list<int> *tree, int treeSize, int root, int x, int *dp)
+{
   std::stack<int> stack;
   int counter = 0;
 
   stack.push(root);
   int node;
 
-  while (!stack.empty() && counter <= x) {
+  while (!stack.empty() && counter <= x)
+  {
     node = stack.top();
     stack.pop();
     counter++;
 
     // push children
     int nodeChildren = dp[node];
-    if (counter + nodeChildren < x) {
+    if (counter + nodeChildren < x)
+    {
       counter += nodeChildren;
       continue;
     }
-    for (auto it = tree[node].rbegin(); it != tree[node].rend(); it++) {
+    for (auto it = tree[node].rbegin(); it != tree[node].rend(); it++)
+    {
       stack.push(*it);
     }
   }
@@ -40,15 +44,18 @@ int dfsLimit(list<int> *tree, int treeSize, int root, int x, int *dp) {
     return node;
 }
 
-void count_descendants(list<int> *tree, int treeSize, int root, int *dp) {
+void count_descendants(list<int> *tree, int treeSize, int root, int *dp)
+{
   dp[root] = 0;
-  for (auto it = tree[root].begin(); it != tree[root].end(); it++) {
+  for (auto it = tree[root].begin(); it != tree[root].end(); it++)
+  {
     count_descendants(tree, treeSize, *it, dp);
     dp[root] += dp[*it] + 1;
   }
 }
 
-int main() {
+int main()
+{
   // read from file
   FILE *f = fopen("magazin.in", "r");
   FILE *out = fopen("magazin.out", "w");
@@ -56,7 +63,8 @@ int main() {
   fscanf(f, "%d %d", &n, &q);
   int *in = (int *)malloc((n + 1) * sizeof(int));
   list<int> *tree = new list<int>[n + 1];
-  for (int i = 2; i <= n; i++) {
+  for (int i = 2; i <= n; i++)
+  {
     fscanf(f, "%d", &in[i]);
     tree[in[i]].push_back(i);
   }
@@ -64,7 +72,8 @@ int main() {
   int *dp = (int *)malloc((n + 1) * sizeof(int));
   count_descendants(tree, n + 1, 1, dp);
 
-  for (int i = 0; i < q; i++) {
+  for (int i = 0; i < q; i++)
+  {
     int x, root;
     fscanf(f, "%d %d", &root, &x);
     fprintf(out, "%d\n", dfsLimit(tree, n + 1, root, x, dp));

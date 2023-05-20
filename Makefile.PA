@@ -1,7 +1,7 @@
 # Darius-Florentin Neatu <neatudarius@gmail.com>
 
 # ignorati
-# Makegfile intern folosit de checker
+# Makefile intern folosit de checker
 
 all: build_verif
 

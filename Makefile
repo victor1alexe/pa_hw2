@@ -1,24 +1,32 @@
+# Exemplu de Makefile pentru soluții scrise în C++.
+
 CC = g++
-CFLAGS = -Wall -Wextra -g -std=c++11
+CCFLAGS = -Wall -Wextra -std=c++17 -O0 -lm
 
-P1 = supercomputer.cpp
-P2 = ferate.cpp
-P3 = .
-P4 = magazin.cpp
+.PHONY: build clean
 
-build: $(P1) $(P2) $(P4)
-	$(CC) $(CFLAGS) $(P1) -o supercomputer
-	$(CC) $(CFLAGS) $(P2) -o ferate
-	$(CC) $(CFLAGS) $(P4) -o magazin
+build: p1 p2 p3 p4
 
+# Nu compilați aici, nici măcar ca dependențe de reguli.
 run-p1:
-	./supercomputer
-
+	./p1
 run-p2:
-	./ferate
-
+	./p2
+run-p3:
+	./p3
 run-p4:
-	./magazin
+	./p4
 
+# Schimbați numele surselor (și, eventual, ale executabilelor - peste tot).
+p1: supercomputer.cpp
+	$(CC) -o $@ $^ $(CCFLAGS)
+p2: ferate.cpp
+	$(CC) -o $@ $^ $(CCFLAGS)
+p3: teleportare.cpp
+	$(CC) -o $@ $^ $(CCFLAGS)
+p4: magazin.cpp
+	$(CC) -o $@ $^ $(CCFLAGS)
+
+# Vom șterge executabilele.
 clean:
-	rm -f supercomputer magazin ferate *.out
+	rm -f p1 p2 p3 p4

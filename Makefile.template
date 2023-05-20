@@ -31,10 +31,10 @@ clean:
 #	$(OUT_DIR)/<nume_problemă>
 # Pentru Java
 #	java -cp $(OUT_DIR) <NumeProblemă>
-run-p1:
-run-p2:
+run-p1: ./supercomputer
+run-p2: ./ferate
 run-p3:
-run-p4:
+run-p4: ./magazin
 
 
 # Reguli pentru compilare. Probabil nu e nevoie să le modificați.
