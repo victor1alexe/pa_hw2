@@ -1,9 +1,9 @@
+#include <unistd.h>
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
-#include <unistd.h>
-
 #include <iostream>
 #include <list>
 #include <stack>
@@ -13,86 +13,86 @@ using std::list;
 using std::ofstream;
 using std::stack;
 
-void count_descendants(list<int> *tree, int current_node, int *descendants_of)
-{
-	descendants_of[current_node] = 0;
+void count_descendants(list<int> *tree, int current_node, int *descendants_of) {
+  descendants_of[current_node] = 0;
 
-	for (auto it = tree[current_node].begin(); it != tree[current_node].end(); it++)
-	{
-		count_descendants(tree, *it, descendants_of);
+  for (auto it = tree[current_node].begin(); it != tree[current_node].end();
+       it++) {
+    count_descendants(tree, *it, descendants_of);
 
-		descendants_of[current_node] += descendants_of[*it] + 1;
-	}
+    descendants_of[current_node] += descendants_of[*it] + 1;
+  }
 }
 
-int main()
-{
-	ifstream fin("magazin.in");
-	ofstream fout("magazin.out");
+int main() {
+  ifstream fin("magazin.in");
+  ofstream fout("magazin.out");
 
-	int nr_deposits = 0;
-	int nr_questions = 0;
+  int nr_deposits = 0;
+  int nr_questions = 0;
 
-	fin >> nr_deposits >> nr_questions;
+  fin >> nr_deposits >> nr_questions;
 
-	int supplier_of[nr_deposits + 1] = {0};
-	int descendants_of[nr_deposits + 1] = {0};
+  // int supplier_of[nr_deposits + 1] = {0};
 
-	auto *tree = new list<int>[nr_deposits + 1];
+  int *supplier_of = new int[nr_deposits + 1];
+  memset(supplier_of, 0, (nr_deposits + 1) * sizeof(int));
 
-	for (int i = 2; i <= nr_deposits; i++)
-	{
-		fin >> supplier_of[i];
+  // int descendants_of[nr_deposits + 1] = {0};
+  int *descendants_of = new int[nr_deposits + 1];
+  memset(descendants_of, 0, (nr_deposits + 1) * sizeof(int));
 
-		tree[supplier_of[i]].push_back(i);
-	}
+  auto *tree = new list<int>[nr_deposits + 1];
 
-	count_descendants(tree, 1, descendants_of);
+  for (int i = 2; i <= nr_deposits; i++) {
+    fin >> supplier_of[i];
 
-	for (int i = 1; i <= nr_questions; i++)
-	{
-		int deposit;
-		int nr_of_deliveries;
+    tree[supplier_of[i]].push_back(i);
+  }
 
-		fin >> deposit >> nr_of_deliveries;
+  count_descendants(tree, 1, descendants_of);
 
-		stack<int> stack;
-		int node;
-		int counter = 0;
+  for (int i = 1; i <= nr_questions; i++) {
+    int deposit;
+    int nr_of_deliveries;
 
-		stack.push(deposit);
+    fin >> deposit >> nr_of_deliveries;
 
-		while (!stack.empty() && counter <= nr_of_deliveries)
-		{
-			node = stack.top();
-			stack.pop();
+    stack<int> stack;
+    int node;
+    int counter = 0;
 
-			counter++;
+    stack.push(deposit);
 
-			if (counter + descendants_of[node] < nr_of_deliveries)
-			{
-				counter += descendants_of[node];
-				continue;
-			}
+    while (!stack.empty() && counter <= nr_of_deliveries) {
+      node = stack.top();
+      stack.pop();
 
-			for (auto node_neigh = tree[node].rbegin(); node_neigh != tree[node].rend(); node_neigh++)
-			{
-				stack.push(*node_neigh);
-			}
-		}
+      counter++;
 
-		if (counter <= nr_of_deliveries)
-		{
-			fout << -1 << '\n';
-		}
-		else
-		{
-			fout << node << '\n';
-		}
-	}
+      if (counter + descendants_of[node] < nr_of_deliveries) {
+        counter += descendants_of[node];
+        continue;
+      }
 
-	fin.close();
-	fout.close();
+      for (auto node_neigh = tree[node].rbegin();
+           node_neigh != tree[node].rend(); node_neigh++) {
+        stack.push(*node_neigh);
+      }
+    }
 
-	return 0;
+    if (counter <= nr_of_deliveries) {
+      fout << -1 << '\n';
+    } else {
+      fout << node << '\n';
+    }
+  }
+
+  fin.close();
+  fout.close();
+
+  delete[] supplier_of;
+  delete[] descendants_of;
+
+  return 0;
 }
