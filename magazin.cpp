@@ -13,86 +13,116 @@ using std::list;
 using std::ofstream;
 using std::stack;
 
-void count_descendants(list<int> *tree, int current_node, int *descendants_of) {
-  descendants_of[current_node] = 0;
+#define DIE(assertion, call_description)                 \
+  do {                                                   \
+    if (assertion) {                                     \
+      fprintf(stderr, "(%s, %d): ", __FILE__, __LINE__); \
+      perror(call_description);                          \
+      exit(EXIT_FAILURE);                                \
+    }                                                    \
+  } while (0)
 
-  for (auto it = tree[current_node].begin(); it != tree[current_node].end();
-       it++) {
-    count_descendants(tree, *it, descendants_of);
+void cnt_desc(list<uint32_t> *tree, uint32_t node, uint32_t *desc) {
+  desc[node] = 0;
 
-    descendants_of[current_node] += descendants_of[*it] + 1;
+  for (auto child = tree[node].begin(); child != tree[node].end(); child++) {
+    cnt_desc(tree, *child, desc);
+
+    desc[node] += desc[*child] + 1;
   }
 }
 
-int main() {
-  ifstream fin("magazin.in");
-  ofstream fout("magazin.out");
+void send_packets(list<uint32_t> *tree, const uint32_t *desc, uint32_t n_q,
+                  ifstream &fin, ofstream &fout) {
+  for (uint32_t i = 1; i <= n_q; i++) {
+    uint32_t depo = 0;
+    uint32_t n_packets = 0;
+    uint32_t node = 0;
+    uint32_t cnt = 0;
+    stack<uint32_t> stack;
 
-  int nr_deposits = 0;
-  int nr_questions = 0;
+    fin >> depo >> n_packets;
+    DIE(fin.fail(), "read depo and n_packets");
 
-  fin >> nr_deposits >> nr_questions;
+    stack.push(depo);
 
-  // int supplier_of[nr_deposits + 1] = {0};
+    while (true) {
+      if (stack.empty()) {
+        break;
+      }
 
-  int *supplier_of = new int[nr_deposits + 1];
-  memset(supplier_of, 0, (nr_deposits + 1) * sizeof(int));
+      if (cnt > n_packets) {
+        break;
+      }
 
-  // int descendants_of[nr_deposits + 1] = {0};
-  int *descendants_of = new int[nr_deposits + 1];
-  memset(descendants_of, 0, (nr_deposits + 1) * sizeof(int));
-
-  auto *tree = new list<int>[nr_deposits + 1];
-
-  for (int i = 2; i <= nr_deposits; i++) {
-    fin >> supplier_of[i];
-
-    tree[supplier_of[i]].push_back(i);
-  }
-
-  count_descendants(tree, 1, descendants_of);
-
-  for (int i = 1; i <= nr_questions; i++) {
-    int deposit;
-    int nr_of_deliveries;
-
-    fin >> deposit >> nr_of_deliveries;
-
-    stack<int> stack;
-    int node;
-    int counter = 0;
-
-    stack.push(deposit);
-
-    while (!stack.empty() && counter <= nr_of_deliveries) {
       node = stack.top();
       stack.pop();
 
-      counter++;
+      cnt++;
 
-      if (counter + descendants_of[node] < nr_of_deliveries) {
-        counter += descendants_of[node];
+      if (cnt + desc[node] < n_packets) {
+        cnt += desc[node];
         continue;
       }
 
-      for (auto node_neigh = tree[node].rbegin();
-           node_neigh != tree[node].rend(); node_neigh++) {
-        stack.push(*node_neigh);
+      std::reverse_iterator<list<uint32_t>::iterator> child;
+      for (child = tree[node].rbegin(); child != tree[node].rend(); child++) {
+        stack.push(*child);
       }
     }
 
-    if (counter <= nr_of_deliveries) {
+    if (cnt <= n_packets) {
       fout << -1 << '\n';
     } else {
       fout << node << '\n';
     }
   }
+}
+
+int main(int argc, char ** /*argv*/, char ** /*enviro*/) {
+  DIE(argc != 1, "usage: ./magazin");
+
+  ifstream fin;
+  fin.open("magazin.in");
+  DIE(fin.fail(), "open magazin.in");
+
+  ofstream fout;
+  fout.open("magazin.out");
+  DIE(fout.fail(), "open magazin.out");
+
+  uint32_t n_depo = 0;
+  uint32_t n_q = 0;
+
+  fin >> n_depo >> n_q;
+  DIE(fin.fail(), "read n_depo and n_q");
+
+  auto *sup = new uint32_t[n_depo + 1];
+  DIE(sup == nullptr, "alloc sup");
+  memset(sup, 0, (n_depo + 1) * sizeof(uint32_t));
+
+  auto *desc = new uint32_t[n_depo + 1];
+  DIE(desc == nullptr, "alloc desc");
+  memset(desc, 0, (n_depo + 1) * sizeof(uint32_t));
+
+  auto *tree = new list<uint32_t>[n_depo + 1];
+  DIE(tree == nullptr, "alloc tree");
+
+  for (uint32_t i = 2; i <= n_depo; i++) {
+    fin >> sup[i];
+
+    tree[sup[i]].push_back(i);
+  }
+
+  cnt_desc(tree, 1, desc);
+
+  send_packets(tree, desc, n_q, fin, fout);
 
   fin.close();
   fout.close();
 
-  delete[] supplier_of;
-  delete[] descendants_of;
+  delete[] sup;
+  delete[] desc;
+  delete[] tree;
 
   return 0;
 }

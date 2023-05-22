@@ -15,89 +15,163 @@ using std::pair;
 using std::priority_queue;
 using std::vector;
 
-void dfs1_iter(int v, vector<int> g[], bool good[]) {
-  vector<int> stack;
-  stack.push_back(v);
-  while (!stack.empty()) {
-    int const node = stack.back();
-    stack.pop_back();
-    good[node] = true;
-    for (auto to : g[node]) {
-      if (!good[to]) {
-        stack.push_back(to);
-      }
-    }
-  }
-}
+#define DIE(assertion, call_description)                 \
+  do {                                                   \
+    if (assertion) {                                     \
+      fprintf(stderr, "(%s, %d): ", __FILE__, __LINE__); \
+      perror(call_description);                          \
+      exit(EXIT_FAILURE);                                \
+    }                                                    \
+  } while (0)
 
-void dfs2(int v, vector<int> g[], bool good[], bool vis[], int &cnt) {
-  vis[v] = true;
+void cnt_desc(uint32_t v, vector<uint32_t> **g, bool *reachable, bool *visited,
+              uint32_t &cnt) {
+  visited[v] = true;
   ++cnt;
-  for (long unsigned int i = 0; i < g[v].size(); ++i) {
-    if (good[g[v][i]] || vis[g[v][i]]) {
+
+  for (uint32_t i = 0; i < g[v]->size(); ++i) {
+    uint32_t const j = g[v]->at(i);
+
+    if (reachable[j] || visited[j]) {
       continue;
     }
 
-    dfs2(g[v][i], g, good, vis, cnt);
+    cnt_desc(j, g, reachable, visited, cnt);
   }
 }
 
-class Compare {
- public:
-  bool operator()(pair<int, int> a, pair<int, int> b) {
-    return a.first < b.first;
+void mark_reachable(uint32_t v, vector<uint32_t> **g, bool *reachable) {
+  vector<uint32_t> stack;
+
+  stack.push_back(v);
+
+  while (true) {
+    if (stack.empty()) {
+      break;
+    }
+
+    uint32_t const node = stack.back();
+    stack.pop_back();
+
+    reachable[node] = true;
+
+    for (uint32_t const neigh : *g[node]) {
+      if (!reachable[neigh]) {
+        stack.push_back(neigh);
+      }
+    }
   }
-};
+}
 
-int main() {
-  const int N = 100001;
+void cnt_addable(
+    uint32_t src, vector<uint32_t> **g, bool *reachable,
+    priority_queue<pair<uint32_t, uint32_t>, vector<pair<uint32_t, uint32_t>>,
+                   std::less<>> &pq,
+    uint32_t &ans) {
+  while (true) {
+    if (pq.empty()) {
+      break;
+    }
 
-  int n = 0;
-  int m = 0;
-  int x = 0;
-  int i = 0;
-  int from = 0;
-  int to = 0;
-  int cnt = 0;
+    auto pair = pq.top();
+    pq.pop();
 
-  bool vis[N];
-  bool good[N];
+    uint32_t const node = pair.second;
 
-  vector<int> g[N];
+    if (!reachable[node]) {
+      if (node != src) {
+        ++ans;
+      }
 
-  ifstream f("ferate.in");
-  ofstream fout("ferate.out");
-
-  f >> n >> m >> x;
-
-  for (i = 1; i <= m; i++) {
-    f >> from >> to;
-    g[from].push_back(to);
+      mark_reachable(node, g, reachable);
+    }
   }
+}
 
-  dfs1_iter(x, g, good);
-  priority_queue<pair<int, int>, vector<pair<int, int>>, Compare> pq;
-  for (int i = 1; i <= n; ++i) {
-    if (!good[i]) {
-      cnt = 0;
-      memset(vis, 0, N);
-      dfs2(i, g, good, vis, cnt);
+void sort_by_desc(
+    vector<uint32_t> **g, uint32_t const n_depo, bool *reachable, bool *visited,
+    priority_queue<pair<uint32_t, uint32_t>, vector<pair<uint32_t, uint32_t>>,
+                   std::less<>> &pq) {
+  for (uint32_t i = 1; i <= n_depo; i++) {
+    if (!reachable[i]) {
+      uint32_t cnt = 0;
+
+      memset(visited, 0, n_depo + 1);
+      cnt_desc(i, g, reachable, visited, cnt);
+
       pq.emplace(cnt, i);
     }
   }
-  int ans = 0;
-  while (!pq.empty()) {
-    auto it = pq.top();
-    pq.pop();
-    if (!good[it.second]) {
-      if (it.second != x) {
-        ++ans;
-      }
-      dfs1_iter(it.second, g, good);
-    }
+}
+
+void alloc_mem(void **ptr, size_t size) {
+  *ptr = malloc(size);
+  DIE(*ptr == nullptr, "malloc");
+}
+
+int main(int argc, char ** /*argv*/, char ** /*envp*/) {
+  DIE(argc != 1, "usage: ./ferate");
+
+  ifstream fin;
+  ofstream fout;
+
+  uint32_t n_depo = 0;
+  uint32_t n_roads = 0;
+  uint32_t src = 0;
+
+  bool *reachable = nullptr;
+  bool *visited = nullptr;
+
+  fin.open("ferate.in");
+  DIE(fin.fail(), "open ferate.in");
+
+  fout.open("ferate.out");
+  DIE(fout.fail(), "open ferate.out");
+
+  fin >> n_depo >> n_roads >> src;
+
+  alloc_mem(reinterpret_cast<void **>(&reachable), (n_depo + 1) * sizeof(bool));
+  alloc_mem(reinterpret_cast<void **>(&visited), (n_depo + 1) * sizeof(bool));
+
+  auto **g = new vector<uint32_t> *[n_depo + 1];
+  DIE(g == nullptr, "alloc g");
+  for (uint32_t i = 1; i <= n_depo; i++) {
+    g[i] = new vector<uint32_t>();
+    DIE(g[i] == nullptr, "alloc g[i]");
   }
 
+  for (uint32_t i = 1; i <= n_roads; i++) {
+    uint32_t x = 0;
+    uint32_t y = 0;
+
+    fin >> x >> y;
+    DIE(fin.fail(), "read x and y");
+
+    g[x]->push_back(y);
+  }
+
+  mark_reachable(src, g, reachable);
+
+  priority_queue<pair<uint32_t, uint32_t>, vector<pair<uint32_t, uint32_t>>,
+                 std::less<>>
+      pq;
+
+  sort_by_desc(g, n_depo, reachable, visited, pq);
+
+  uint32_t ans = 0;
+  cnt_addable(src, g, reachable, pq, ans);
+
   fout << ans;
+
+  fin.close();
+  fout.close();
+
+  free(reachable);
+  free(visited);
+  for (uint32_t i = 1; i <= n_depo; i++) {
+    delete g[i];
+  }
+  delete[] g;
 
   return 0;
 }

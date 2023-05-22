@@ -204,8 +204,8 @@ void top_sorts(uint32_t n_nodes, const uint32_t *dataset,
   }
 }
 
-int main(int argc, char * /*argv*/[]) {
-  DIE(argc != 1, "argc != 1");
+int main(int argc, char * /*argv*/[], char * /*envp*/[]) {
+  DIE(argc != 1, "usage: ./supercomputer");
 
   ifstream in;
   ofstream out;
