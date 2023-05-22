@@ -3,66 +3,91 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <list>
 #include <queue>
 #include <vector>
 
+using std::ifstream;
 using std::list;
+using std::ofstream;
 using std::pair;
 using std::priority_queue;
 using std::vector;
 
+#define INPUT_FILE "teleportare.in"
+#define OUTPUT_FILE "teleportare.out"
+
 #define INF std::numeric_limits<uint32_t>::max()
 
-struct Node {
-  int n;
+#define DIE(assertion, call_description)                 \
+  do {                                                   \
+    if (assertion) {                                     \
+      fprintf(stderr, "(%s, %d): ", __FILE__, __LINE__); \
+      perror(call_description);                          \
+      exit(EXIT_FAILURE);                                \
+    }                                                    \
+  } while (0)
+
+struct Room {
+  uint32_t id;
   uint32_t cost;
-  bool temp;
+  bool is_tp;
 };
 
-int iddfs(int start, int end, int initial_cost, int target, int limit,
-          list<Node> *graph, int goal);
+struct Compare_by_dist {
+  bool operator()(const pair<uint32_t, uint32_t> &p1,
+                  const pair<uint32_t, uint32_t> &p2) {
+    return p1.second > p2.second;
+  }
+};
 
-// depth limited search with revisiting nodes, to check if there is a path
-// from start to end with an exact cost
-uint32_t dls(int start, int end, uint32_t cost, int target, int limit,
-             list<Node> *graph, int goal) {
-  // cout << start << " " << end << ": " << cost << endl;
-  if (start == end && cost % target == 0) {
+void open_streams(ifstream &in, ofstream &out) {
+  in.open(INPUT_FILE);
+  DIE(in.fail(), "open " INPUT_FILE);
+
+  out.open(OUTPUT_FILE);
+  DIE(out.fail(), "open " OUTPUT_FILE);
+}
+
+uint32_t dls(uint32_t start, uint32_t end, uint32_t cost, uint32_t target,
+             uint32_t depth, list<Room> *neigh_rooms) {
+  bool const at_end = start == end;
+  bool const can_tp = cost % target == 0;
+
+  if (at_end && can_tp) {
     return cost;
   }
 
-  if (limit <= 0) {
+  if (depth <= 0) {
     return -1;
   }
 
-  for (auto it = graph[start].begin(); it != graph[start].end(); it++) {
-    if (!it->temp) {
-      int const ret =
-          dls(it->n, end, cost + it->cost, target, limit - 1, graph, goal);
-      if (ret != -1) {
-        return ret;
-      }
+  for (auto neigh : neigh_rooms[start]) {
+    if (neigh.is_tp) {
+      continue;
     }
-    // if (it->temp) {
-    //   int ret = iddfs(it->n, it->n, cost, it->cost, limit, graph, goal);
-    //   if (ret != -1) {
-    //     return ret;
-    //   }
-    // }
+
+    uint32_t const move_around_dist =
+        dls(neigh.id, end, cost + neigh.cost, target, depth - 1, neigh_rooms);
+    if (move_around_dist != -1) {
+      return move_around_dist;
+    }
   }
+
   return -1;
 }
 
-// IDDFS
-int iddfs(int start, int end, int initial_cost, int target, int limit,
-          list<Node> *graph, int goal) {
-  for (int i = 1; i <= limit; i++) {
-    int const ret = dls(start, end, initial_cost, target, i, graph, goal);
-    if (ret != -1) {
-      return ret;
+uint32_t iddfs(uint32_t start, uint32_t end, uint32_t cost_init,
+               uint32_t target, uint32_t depth, list<Room> *neigh_rooms) {
+  for (uint32_t i = 1; i <= depth; i++) {
+    uint32_t const min_move_around_dist =
+        dls(start, end, cost_init, target, i, neigh_rooms);
+
+    if (min_move_around_dist != -1) {
+      return min_move_around_dist;
     }
   }
 
@@ -70,170 +95,159 @@ int iddfs(int start, int end, int initial_cost, int target, int limit,
 }
 
 struct Compare {
-  bool operator()(const pair<int, int> &p1, const pair<int, int> &p2) {
+  bool operator()(const pair<uint32_t, uint32_t> &p1,
+                  const pair<uint32_t, uint32_t> &p2) {
     return p1.second > p2.second;
   }
 };
 
-// djikstra
-uint32_t djikstra(int start, int end, list<Node> *graph, int n) {
+uint32_t dijkstra(uint32_t start, uint32_t end, list<Room> *neigh_rooms,
+                  uint32_t n_rooms) {
   auto *dist = new uint32_t[end + 1];
-  bool *visited = new bool[end + 1];
+  DIE(dist == nullptr, "alloc dist");
+  memset(dist, UINT32_MAX, sizeof(uint32_t) * (end + 1));
 
-  for (int i = 0; i <= end; i++) {
-    dist[i] = INF;
-    visited[i] = false;
-  }
+  auto *vis = new bool[end + 1];
+  DIE(vis == nullptr, "alloc vis");
+  memset(vis, 0, sizeof(bool) * (end + 1));
 
   dist[start] = 0;
-  // queue<int> q;
-  //  create priority queue of pairs, and compare by second element
-  priority_queue<pair<int, int>, vector<pair<int, int>>, Compare> pq;
 
-  // q.push(start);
+  priority_queue<pair<uint32_t, uint32_t>, vector<pair<uint32_t, uint32_t>>,
+                 Compare_by_dist>
+      pq;
+
   pq.emplace(start, 0);
 
-  while (!pq.empty()) {
-    // getchar();
-    //  int node = q.front();
-    //  q.pop();
-    int const node = pq.top().first;
-    pq.pop();
-
-    // cout << "node taken out: " << node << endl;
-
-    if (node == end) {
+  while (true) {
+    if (pq.empty()) {
       break;
     }
 
-    if (visited[node]) {
+    uint32_t const room = pq.top().first;
+    pq.pop();
+
+    if (room == end) {
+      break;
+    }
+
+    if (vis[room]) {
       continue;
     }
-    visited[node] = true;
 
-    for (auto it = graph[node].begin(); it != graph[node].end(); it++) {
-      // cout << "checking node: " << it->n << endl;
-      if (node == start && it->temp && dist[it->n] > 1) {
-        // cout << "starting with teleport" << endl;
-        dist[it->n] = dist[node] + 1;
-        // q.push(it->n);
-        pq.emplace(it->n, dist[it->n]);
-        // cout << "dist: ";
-        // for (int i = 1; i <= end; i++) {
-        //   cout << dist[i] << " ";
-        // }
-        // cout << endl;
+    vis[room] = true;
+
+    for (auto neigh : neigh_rooms[room]) {
+      uint32_t const potential_dist = dist[room] + neigh.cost;
+      bool const worth_it = potential_dist < dist[neigh.id];
+      bool const can_tp = dist[room] % neigh.cost == 0;
+      bool const am_start = room == start;
+
+      if (am_start && neigh.is_tp && dist[neigh.id] > 1) {
+        dist[neigh.id] = 1;
+        pq.emplace(neigh.id, dist[neigh.id]);
         continue;
       }
-      if (it->temp && dist[node] % it->cost == 0 &&
-          dist[it->n] > dist[node] + it->cost) {
-        // cout << "can take shortcut" << endl;
-        dist[it->n] = dist[node] + 1;
-        // visited[it->n] = false;
-        pq.emplace(it->n, dist[it->n]);
-      } else if (it->temp && dist[node] < dist[it->n]) {
-        // cout << "checking if can teleport" << endl;
-        int const ret = iddfs(node, node, dist[node], it->cost, n, graph, end);
-        if (ret != -1) {
-          // cout << "can teleport" << endl;
-          if (dist[it->n] > ret + 1) {
-            dist[it->n] = ret + 1;
-            // visited[it->n] = false;
-            pq.emplace(it->n, dist[it->n]);
-          }
-        }
-      } else if (!it->temp && dist[it->n] > dist[node] + it->cost) {
-        // cout << "found better" << endl;
-        dist[it->n] = dist[node] + it->cost;
-        pq.emplace(it->n, dist[it->n]);
+
+      if (neigh.is_tp && can_tp && worth_it) {
+        dist[neigh.id] = dist[room] + 1;
+        pq.emplace(neigh.id, dist[neigh.id]);
+        continue;
       }
-      // cout << "dist: ";
-      // for (int i = 1; i <= end; i++) {
-      //   cout << dist[i] << " ";
-      // }
-      // cout << endl;
+
+      if (neigh.is_tp && !can_tp) {
+        uint32_t const move_around_dist =
+            iddfs(room, room, dist[room], neigh.cost, n_rooms, neigh_rooms);
+
+        if (move_around_dist == -1) {
+          continue;
+        }
+
+        if (move_around_dist + 1 < dist[neigh.id]) {
+          dist[neigh.id] = move_around_dist + 1;
+          pq.emplace(neigh.id, dist[neigh.id]);
+        }
+
+        continue;
+      }
+
+      if (worth_it && !neigh.is_tp) {
+        dist[neigh.id] = potential_dist;
+        pq.emplace(neigh.id, dist[neigh.id]);
+      }
     }
   }
 
-  // print dist
-  // for (int i = 1; i <= end; i++) {
-  //   cout << dist[i] << " ";
-  // }
-  // cout << endl;
-
   uint32_t const ret = dist[end];
+
   delete[] dist;
-  delete[] visited;
+  delete[] vis;
 
   return ret;
 }
 
-int main() {
-  // read from file
-  int m;
-  int n;
-  int k;
-  FILE *f = fopen("teleportare.in", "r");
-  // FILE *f = fopen("public_tests/teleportare/input/4-teleportare.in", "r");
-  FILE *out = fopen("teleportare.out", "w");
-  fscanf(f, "%d %d %d", &n, &m, &k);
+int main(int argc, char ** /*argv*/, char ** /*envp*/) {
+  DIE(argc != 1, "usage: ./teleportare");
 
-  // read graph
-  auto *graph = new list<Node>[n + 1];
-  for (int i = 0; i < m; i++) {
-    int x;
-    int y;
-    int c;
-    fscanf(f, "%d %d %d", &x, &y, &c);
-    Node node;
-    node.n = y;
-    node.cost = c;
-    node.temp = false;
-    graph[x].push_back(node);
-    Node node2;
-    node2.n = x;
-    node2.cost = c;
-    node2.temp = false;
-    graph[y].push_back(node2);
+  ifstream in;
+  ofstream out;
+  open_streams(in, out);
+
+  uint32_t n_rooms = 0;
+  uint32_t n_halls = 0;
+  uint32_t n_tp = 0;
+
+  in >> n_rooms >> n_halls >> n_tp;
+  DIE(in.fail(), "read n_rooms, n_halls, n_tp");
+
+  auto *neigh_rooms = new list<Room>[n_rooms + 1];
+  DIE(neigh_rooms == nullptr, "alloc neigh_rooms");
+
+  for (uint32_t i = 1; i <= n_halls; i++) {
+    uint32_t x = 0;
+    uint32_t y = 0;
+    uint32_t c = 0;
+
+    in >> x >> y >> c;
+    DIE(in.fail(), "read x, y, c");
+
+    Room room;
+    room.id = y;
+    room.cost = c;
+    room.is_tp = false;
+
+    neigh_rooms[x].push_back(room);
+
+    room.id = x;
+    neigh_rooms[y].push_back(room);
   }
 
-  // read teleportation
-  for (int i = 0; i < k; i++) {
-    int x;
-    int y;
-    int c;
-    fscanf(f, "%d %d %d", &x, &y, &c);
-    Node node;
-    node.n = y;
-    node.cost = c;
-    node.temp = true;
-    graph[x].push_back(node);
-    Node node2;
-    node2.n = x;
-    node2.cost = c;
-    node2.temp = true;
-    graph[y].push_back(node2);
+  for (uint32_t i = 1; i <= n_tp; i++) {
+    uint32_t x = 0;
+    uint32_t y = 0;
+    uint32_t c = 0;
+
+    in >> x >> y >> c;
+    DIE(in.fail(), "read x, y, c");
+
+    Room room;
+    room.id = y;
+    room.cost = c;
+    room.is_tp = true;
+
+    neigh_rooms[x].push_back(room);
+
+    room.id = x;
+    neigh_rooms[y].push_back(room);
   }
 
-  // print graph
-  // for (int i = 1; i <= n; i++) {
-  //   cout << i << ": ";
-  //   for (auto it = graph[i].begin(); it != graph[i].end(); it++) {
-  //     if (it->temp)
-  //       cout << "(" << it->n << ") ";
-  //     else
-  //       cout << it->n << " ";
-  //   }
-  //   cout << endl;
-  // }
+  // out << djikstra(1, n_rooms, neigh_rooms, n_rooms);
+  out << dijkstra(1, n_rooms, neigh_rooms, n_rooms);
 
-  // cout << djikstra(1, n, graph, n) << endl;
-  fprintf(out, "%d", djikstra(1, n, graph, n));
+  in.close();
+  out.close();
 
-  fclose(f);
-  fclose(out);
-
-  delete[] graph;
+  delete[] neigh_rooms;
 
   return 0;
 }
