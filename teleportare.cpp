@@ -52,57 +52,7 @@ void open_streams(ifstream &in, ofstream &out) {
   DIE(out.fail(), "open " OUTPUT_FILE);
 }
 
-uint32_t dls(uint32_t start, uint32_t end, uint32_t cost, uint32_t target,
-             uint32_t depth, list<Room> *neigh_rooms) {
-  bool const at_end = start == end;
-  bool const can_tp = cost % target == 0;
-
-  if (at_end && can_tp) {
-    return cost;
-  }
-
-  if (depth <= 0) {
-    return -1;
-  }
-
-  for (auto neigh : neigh_rooms[start]) {
-    if (neigh.is_tp) {
-      continue;
-    }
-
-    uint32_t const move_around_dist =
-        dls(neigh.id, end, cost + neigh.cost, target, depth - 1, neigh_rooms);
-    if (move_around_dist != -1) {
-      return move_around_dist;
-    }
-  }
-
-  return -1;
-}
-
-uint32_t iddfs(uint32_t start, uint32_t end, uint32_t cost_init,
-               uint32_t target, uint32_t depth, list<Room> *neigh_rooms) {
-  for (uint32_t i = 1; i <= depth; i++) {
-    uint32_t const min_move_around_dist =
-        dls(start, end, cost_init, target, i, neigh_rooms);
-
-    if (min_move_around_dist != -1) {
-      return min_move_around_dist;
-    }
-  }
-
-  return -1;
-}
-
-struct Compare {
-  bool operator()(const pair<uint32_t, uint32_t> &p1,
-                  const pair<uint32_t, uint32_t> &p2) {
-    return p1.second > p2.second;
-  }
-};
-
-uint32_t dijkstra(uint32_t start, uint32_t end, list<Room> *neigh_rooms,
-                  uint32_t n_rooms) {
+uint32_t min_dist(uint32_t start, uint32_t end, list<Room> *neigh_rooms) {
   auto *dist = new uint32_t[end + 1];
   DIE(dist == nullptr, "alloc dist");
   memset(dist, UINT32_MAX, sizeof(uint32_t) * (end + 1));
@@ -152,22 +102,6 @@ uint32_t dijkstra(uint32_t start, uint32_t end, list<Room> *neigh_rooms,
       if (neigh.is_tp && can_tp && worth_it) {
         dist[neigh.id] = dist[room] + 1;
         pq.emplace(neigh.id, dist[neigh.id]);
-        continue;
-      }
-
-      if (neigh.is_tp && !can_tp) {
-        uint32_t const move_around_dist =
-            iddfs(room, room, dist[room], neigh.cost, n_rooms, neigh_rooms);
-
-        if (move_around_dist == -1) {
-          continue;
-        }
-
-        if (move_around_dist + 1 < dist[neigh.id]) {
-          dist[neigh.id] = move_around_dist + 1;
-          pq.emplace(neigh.id, dist[neigh.id]);
-        }
-
         continue;
       }
 
@@ -241,8 +175,7 @@ int main(int argc, char ** /*argv*/, char ** /*envp*/) {
     neigh_rooms[y].push_back(room);
   }
 
-  // out << djikstra(1, n_rooms, neigh_rooms, n_rooms);
-  out << dijkstra(1, n_rooms, neigh_rooms, n_rooms);
+  out << min_dist(1, n_rooms, neigh_rooms);
 
   in.close();
   out.close();
