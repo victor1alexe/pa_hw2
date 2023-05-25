@@ -1,1 +1,35 @@
 Alexe Victor 323CC
+Timp estimat: 15h
+
+Supercomputer:
+  Dupa citire, creez 4 cozi, gandite la nivel intuitiv ca 2 perechi de cozi.
+  Fiecare pereche va avea o coada pentru setul 1, respectiv setul 2.
+  Fiecare pereche reprezinta un potential raspuns corect, in functie de
+  ordinea plecarii in parcurgerea topologica.
+  Dupa initializarea cozilor cu nodurile aferente, se introduc in vectorii ce reprezinta
+  parcurgerile topologice, primul element din fiecare coada.
+  Apoi, se incepe sortarea topologica, in ambele moduri in aceeasi iteratie.
+  In momentul in care unul dintre nodurile parcurse este de o culoare opusa cu cea a parintelui, se introduce in coada din perechea opusa.
+  In raspuns, adica in vectorii de sortare topologica, se incearca pe cat posibil adaugarea unui nod cu acelasi tip de date ca precedentul.
+  Daca nu se poate, se pune de alta culoare.
+  La final, se numara context switch-urile din ambele sortari topologice.
+  Sortarea topologica cu numar minim de switchuri este raspunsul corect.
+
+
+Ferate:
+  Se porneste cu un DFS pe nodul sursa pentru a marca nodurile reachable fara a crea muchii aditionale.
+  Pentru fiecare din nodurile care nu sunt incluse din primul DFS, se face un DFS din nodul aferent, pentru
+  a afla numarul de descendenti. Se foloseste o coada de prioritate pentru a alege mereu nodul ne-accesibil din nodul sursa cu descendentii cei mai multi. Se marcheaza ca fiind accesibili descendentii nodului si se incrementeaza numarul de muchii necesare de adaugat.
+
+
+Teleportare:
+  Se aplica Dijsktra din nodul 1 in nodul N, cu proprietatea aditionala ca daca se afla pe un capat de
+  teleport, se poate teleporta daca are costul multiplu al valorii muchiei teleport.
+
+
+Magazin:
+  Se calculeaza descendentii tuturor nodurilor intr-o maniera de programare dinamica + DFS.
+  Pentru fiecare intrebare din input, daca nodul sursa, depozitul, nu are destui descendenti, se intoarce
+  imediat -1 la afisare, altfel, daca depasind un subarbore, inca mai raman noduri de parcurs, se ignora
+  subarborele si se apeleaza la tabela dp. Daca nu se pot satisface conditiile precedente, trebuie parcurse
+  nodurile ramase pentru a afla nodul terminal.
