@@ -57,10 +57,6 @@ uint32_t min_dist(uint32_t start, uint32_t end, list<Room> *neigh_rooms) {
   DIE(dist == nullptr, "alloc dist");
   memset(dist, UINT32_MAX, sizeof(uint32_t) * (end + 1));
 
-  auto *vis = new bool[end + 1];
-  DIE(vis == nullptr, "alloc vis");
-  memset(vis, 0, sizeof(bool) * (end + 1));
-
   dist[start] = 0;
 
   priority_queue<pair<uint32_t, uint32_t>, vector<pair<uint32_t, uint32_t>>,
@@ -80,12 +76,6 @@ uint32_t min_dist(uint32_t start, uint32_t end, list<Room> *neigh_rooms) {
     if (room == end) {
       break;
     }
-
-    if (vis[room]) {
-      continue;
-    }
-
-    vis[room] = true;
 
     for (auto neigh : neigh_rooms[room]) {
       uint32_t const potential_dist = dist[room] + neigh.cost;
@@ -115,7 +105,6 @@ uint32_t min_dist(uint32_t start, uint32_t end, list<Room> *neigh_rooms) {
   uint32_t const ret = dist[end];
 
   delete[] dist;
-  delete[] vis;
 
   return ret;
 }
